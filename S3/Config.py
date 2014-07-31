@@ -128,19 +128,21 @@ class Config(object):
                 if 'AWS_CREDENTIAL_FILE' in os.environ:
                     self.env_config()
 
-            # override these if passed on the command-line
-            if access_key and secret_key:
-                self.access_key = access_key
-                self.secret_key = secret_key
-
-            if len(self.access_key)==0:
+            if not len(self.access_key):
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
                 env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
-        else:
+        # override these if passed on the command-line
+        elif access_key and secret_key:
+            self.access_key = access_key
+            self.secret_key = secret_key
+
+        elif not len(self.access_key):
             self.role_config()
+        else:
+            pass
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
