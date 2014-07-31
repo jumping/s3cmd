@@ -139,8 +139,8 @@ class Config(object):
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
-                else:
-                    self.role_config()
+        else:
+            self.role_config()
 
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
