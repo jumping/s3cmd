@@ -161,9 +161,9 @@ class Config(object):
                 resp=conn.getresponse()
                 if resp.status == 200:
                     creds=json.load(resp)
-                    Config().update_option('access_key', creds['AccessKeyId'].encode('ascii'))
-                    Config().update_option('secret_key', creds['SecretAccessKey'].encode('ascii'))
-                    Config().update_option('access_token', creds['Token'].encode('ascii'))
+                    self.update_option('access_key', creds['AccessKeyId'].encode('ascii'))
+                    self.update_option('secret_key', creds['SecretAccessKey'].encode('ascii'))
+                    self.update_option('access_token', creds['Token'].encode('ascii'))
                 else:
                     raise IOError
             else:

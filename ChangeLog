@@ -1,3 +1,7 @@
+2014-08-04  Jumping Qu <quzhengping@gmail.com>
+Enable the role IAM
+* git://github.com/jumping/s3cmd.git
+
 2011-06-06  Michal Ludvig  <mludvig@logix.net.nz>
 
 ===== Migrated to GIT =====
