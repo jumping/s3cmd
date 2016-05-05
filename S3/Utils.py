@@ -13,6 +13,7 @@ import re
 import string
 import random
 import errno
+import urllib2
 from calendar import timegm
 from logging import debug, warning, error
 from ExitCodes import EX_OSFILE
@@ -518,7 +519,15 @@ except ImportError:
 
 __all__.append("getgrgid_grpname")
 
+def fetchUrl(url):
+    """
+    return the results of the url
+    """
+    try:
+        ret  = urllib2.urlopen(url).read()
+        return ret
+    except:
+        error("Could not get the %s" %url)
+        raise
 
-
-# vim:et:ts=4:sts=4:ai
-
+__all__.append("fetchUrl")

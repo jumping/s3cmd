@@ -15,6 +15,7 @@ import Progress
 from SortedDict import SortedDict
 import httplib
 import locale
+import Utils
 try:
     import json
 except ImportError:
@@ -27,7 +28,6 @@ class Config(object):
     access_key = ""
     secret_key = ""
     access_token = ""
-    _access_token_refresh = True
     host_base = "s3.amazonaws.com"
     host_bucket = "%(bucket)s.s3.amazonaws.com"
     kms_key = ""    #can't set this and Server Side Encryption at the same time
@@ -133,12 +133,12 @@ class Config(object):
     stats = False
 
     ## Creating a singleton
-    def __new__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
+    def __new__(self, configfile = None, access_key=None, secret_key=None):
         if self._instance is None:
             self._instance = object.__new__(self)
         return self._instance
 
-    def __init__(self, configfile = None, access_key=None, secret_key=None, access_token=None):
+    def __init__(self, configfile = None, access_key=None, secret_key=None):
         if configfile:
             try:
                 self.read_config_file(configfile)
@@ -150,23 +150,13 @@ class Config(object):
             if access_key and secret_key:
                 self.access_key = access_key
                 self.secret_key = secret_key
-                
-            if access_token:
-                self.access_token = access_token
-                # Do not refresh the IAM role when an access token is provided.
-                self._access_token_refresh = False
 
             if len(self.access_key)==0:
                 env_access_key = os.environ.get("AWS_ACCESS_KEY", None) or os.environ.get("AWS_ACCESS_KEY_ID", None)
                 env_secret_key = os.environ.get("AWS_SECRET_KEY", None) or os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-                env_access_token = os.environ.get("AWS_SESSION_TOKEN", None) or os.environ.get("AWS_SECURITY_TOKEN", None)
                 if env_access_key:
                     self.access_key = env_access_key
                     self.secret_key = env_secret_key
-                    if env_access_token:
-                        # Do not refresh the IAM role when an access token is provided.
-                        self._access_token_refresh = False
-                        self.access_token = env_access_token
                 else:
                     self.role_config()
 
@@ -176,6 +166,25 @@ class Config(object):
             if self.kms_key and self.signature_v2 == True:
                 raise Exception('KMS encryption requires signature v4. Please set signature_v2 to False')
 
+    def zone_region(self):
+        domain = Utils.fetchUrl("http://169.254.169.254//latest/meta-data/services/domain")
+        zone = Utils.fetchUrl("http://169.254.169.254//latest/meta-data/placement/availability-zone")
+        if 'amazonaws.com' not in domain:
+            error("Could not get the domain")
+            raise
+        if '-' not in zone:
+            error("Could not get the zone")
+            raise
+        zone_main = zone[:-1]
+        Config().update_option('bucket_location', zone_main)
+        Config().update_option('host_base', '.'.join(["s3", zone_main, domain]))
+        Config().update_option('host_bucket', '.'.join(["%(bucket)s", "s3", zone_main, domain]))
+        Config().update_option('website_endpoint', '.'.join(["http://%(bucket)s.s3-website-%(location)s", domain+"/"]))
+        debug(Config().bucket_location)
+        debug(Config().host_base)
+        debug(Config().host_bucket)
+        debug(Config().website_endpoint)
+
     def role_config(self):
         if sys.version_info[0] * 10 + sys.version_info[1] < 26:
             error("IAM authentication requires Python 2.6 or newer")
@@ -183,6 +192,7 @@ class Config(object):
         if not 'json' in sys.modules:
             error("IAM authentication not available -- missing module json")
             raise
+        self.zone_region()
         try:
             conn = httplib.HTTPConnection(host='169.254.169.254', timeout = 2)
             conn.request('GET', "/latest/meta-data/iam/security-credentials/")
@@ -204,11 +214,10 @@ class Config(object):
             raise
 
     def role_refresh(self):
-        if self._access_token_refresh:
-            try:
-                self.role_config()
-            except:
-                warning("Could not refresh role")
+        try:
+            self.role_config()
+        except:
+            warning("Could not refresh role")
 
     def env_config(self):
         cred_content = ""

@@ -376,6 +376,7 @@ class S3(object):
         request = self.create_request("BUCKET_LIST", bucket = uri.bucket(), extra = "?location")
         response = self.send_request(request)
         location = getTextFromXml(response['data'], "LocationConstraint")
+        print location
         if not location or location in [ "", "US" ]:
             location = "us-east-1"
         elif location == "EU":
@@ -1304,8 +1305,7 @@ class S3(object):
 
         debug("MD5 sums: computed=%s, received=%s" % (md5_computed, response["headers"]["etag"]))
         ## when using KMS encryption, MD5 etag value will not match
-        md5_from_s3 = response["headers"].get("etag", "").strip('"\'')
-        if (md5_from_s3 != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
+        if (response["headers"]["etag"].strip('"\'') != md5_hash.hexdigest()) and response["headers"].get("x-amz-server-side-encryption") != 'aws:kms':
             warning("MD5 Sums don't match!")
             if retries:
                 warning("Retrying upload of %s" % (filename))
@@ -1474,7 +1474,7 @@ class S3(object):
             progress.update()
             progress.done("done")
 
-        md5_from_s3 = response["headers"].get("etag", "").strip('"')
+        md5_from_s3 = response["headers"]["etag"].strip('"')
         if not 'x-amz-meta-s3tools-gpgenc' in response["headers"]:
             # we can't trust our stored md5 because we
             # encrypted the file after calculating it but before
